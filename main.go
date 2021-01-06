@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"github.com/Ismail14098/homsters_parser/city_parser"
-	"github.com/PuerkitoBio/goquery"
+	"context"
+	"github.com/Ismail14098/homsters_parser/parser"
 	"log"
 	"net/http"
 	"os"
@@ -26,27 +25,20 @@ func main(){
 		log.Fatal(err)
 	}
 
-	//request.Header.Add()
 	response, err := client.Do(request)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer response.Body.Close()
 
+	ctx := context.Background()
+
+	//fmt.Printf("%+v\n", header)
+	cookies := response.Cookies()
+	ctx = context.WithValue(ctx, "cookies", cookies)
+
+	parser.Parse(client, logger, &ctx)
 	//body, err := ioutil.ReadAll(response.Body)
 	//fmt.Println(string(body))
-
-	document, err := goquery.NewDocumentFromReader(response.Body)
-	if err != nil {
-		fmt.Println(err)
-		log.Fatal(err)
-	}
-
-	document.Find("a.b-city-card.js-city-card").Each(func(i int, s *goquery.Selection) {
-		//For each item found, get the band and title
-		cityLink, _ := s.Attr("href")
-		city_parser.Parse(client, cityLink, logger)
-	})
-
 }
 

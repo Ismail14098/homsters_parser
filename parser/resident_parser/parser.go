@@ -34,19 +34,8 @@ func Parse(resident models.Resident, client *http.Client, logger *log.Logger,ctx
 	if err != nil {
 		log.Fatal(err)
 	}
-	//common.ModifyRequest(request, ctx)
-	request.Header.Set("User-Agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36")
-	request.Header.Set("Connection", "keep-alive")
-	request.Header.Set("Accept","*/*")
-	request.Header.Set("Accept-Encoding","gzip, deflate, br")
-	cookies := (*ctx).Value("cookies").([]*http.Cookie)
-	for _, cookie := range cookies {
-		request.AddCookie(cookie)
-	}
 
-	client1 := &http.Client{}
-
-	response, err := client1.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		log.Fatal(err)
 	}

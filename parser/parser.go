@@ -7,9 +7,11 @@ import (
 	"github.com/Ismail14098/homsters_parser/common"
 	"github.com/Ismail14098/homsters_parser/database/models"
 	"github.com/Ismail14098/homsters_parser/parser/resident_parser"
+	"github.com/go-redis/redis/v8"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func Parse(client *http.Client, ctx *context.Context, logger *log.Logger){
@@ -52,27 +54,28 @@ func Parse(client *http.Client, ctx *context.Context, logger *log.Logger){
 
 		err = json.NewDecoder(response.Body).Decode(&result)
 
+		response.Body.Close()
+		client.CloseIdleConnections()
 		//Filter new records from old one
-		//newRecords := filterNewRecords(result.Ads,ctx,logger)
-		//if len(newRecords) > 0 {
-		//	for _, resident := range newRecords {
-		//		resident_parser.Parse(resident, client, logger, ctx)
-		//	}
-		//}
-
-		for _, resident := range result.Ads {
-			resident_parser.Parse(resident, client, logger, ctx)
-			break
+		newRecords := filterNewRecords(result.Ads, ctx, logger)
+		if len(newRecords) > 0 {
+			for _, resident := range newRecords {
+				resident_parser.Parse(resident, client, logger, ctx)
+			}
 		}
 
-		//if list have old records than next page is not needed to be parsed
-		//if len(newRecords) != len(result.Ads){
-		//	time.Sleep(24 * time.Hour)
-		//} else {
-		//	page++
+		//for _, resident := range result.Ads {
+		//	resident_parser.Parse(resident, client, logger, ctx)
+		//	break
 		//}
 
-		response.Body.Close()
+		//if list have old records than next page is not needed to be parsed
+		if len(newRecords) != len(result.Ads){
+			time.Sleep(24 * time.Hour)
+		} else {
+			page++
+		}
+
 		//Test
 		break
 	}
@@ -80,14 +83,14 @@ func Parse(client *http.Client, ctx *context.Context, logger *log.Logger){
 
 func filterNewRecords(records []models.Resident, ctx *context.Context, logger *log.Logger) (newRecords []models.Resident){
 	//var newRecords []models.Resident
-	//for _, v := range records {
-	//	rdb := (*ctx).Value("rdb").(*redis.Client)
-	//	boolCmd := rdb.HExists(*ctx,"resident",strconv.Itoa(int(v.ID)))
-	//	if b,err := boolCmd.Result(); err != nil && !b { // maybe first record is not parsed
-	//		logger.Println("Added new record with id = " + strconv.Itoa(int(v.ID)))
-	//		newRecords = append(newRecords, v)
-	//	}
-	//}
+	for _, v := range records {
+		rdb := (*ctx).Value("rdb").(*redis.Client)
+		boolCmd := rdb.HExists(*ctx,"resident", strconv.Itoa(int(v.ID)))
+		if b,err := boolCmd.Result(); err == nil && !b { // maybe first record is not parsed
+			logger.Println("Added new record with id = " + strconv.Itoa(int(v.ID)))
+			newRecords = append(newRecords, v)
+		}
+	}
 	return
 }
 

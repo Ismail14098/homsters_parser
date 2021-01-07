@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/Ismail14098/homsters_parser/common"
+	"github.com/Ismail14098/homsters_parser/database/models"
 	"github.com/Ismail14098/homsters_parser/parser/resident_parser"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-func Parse(client *http.Client, logger *log.Logger, ctx *context.Context){
+func Parse(client *http.Client, ctx *context.Context, logger *log.Logger){
 	//"IsComplexHasActiveConstructionStatus": true,
 	page := 1
 	urlAddr := "https://homsters.kz/estate/estateforbounds"
 	for true {
+		// getting list of residents
 		pageStr := strconv.Itoa(page)
 		logger.Println("Url " + urlAddr + ", page = " + pageStr)
 
@@ -35,37 +36,58 @@ func Parse(client *http.Client, logger *log.Logger, ctx *context.Context){
 				"IndoorFinish": "31",
 		})
 
-		request, err := http.NewRequest("POST",urlAddr, bytes.NewBuffer(body))
+		request, err := http.NewRequest("POST", urlAddr, bytes.NewBuffer(body))
 
-		modifyRequest(request, ctx)
+		common.ModifyRequest(request, ctx)
 
 		response, err := client.Do(request)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		var result common.JSON
-		json.NewDecoder(response.Body).Decode(&result)
-		fmt.Printf("%+v\n", result)
+		type responseStruct struct {
+			Ads []models.Resident
+		}
+		var result responseStruct
 
-		ads := result["ads"].([]map[string]interface{})
-		for _, resident := range ads{
-			resident_parser.Parse(&resident, logger)
+		err = json.NewDecoder(response.Body).Decode(&result)
+
+		//Filter new records from old one
+		//newRecords := filterNewRecords(result.Ads,ctx,logger)
+		//if len(newRecords) > 0 {
+		//	for _, resident := range newRecords {
+		//		resident_parser.Parse(resident, client, logger, ctx)
+		//	}
+		//}
+
+		for _, resident := range result.Ads {
+			resident_parser.Parse(resident, client, logger, ctx)
+			break
 		}
 
+		//if list have old records than next page is not needed to be parsed
+		//if len(newRecords) != len(result.Ads){
+		//	time.Sleep(24 * time.Hour)
+		//} else {
+		//	page++
+		//}
+
 		response.Body.Close()
+		//Test
 		break
 	}
 }
 
-func modifyRequest(request *http.Request, ctx *context.Context){
-	request.Header.Set("Content-Type","application/json")
-	request.Header.Set("Content-Encoding", "gzip, deflate, br")
-	request.Header.Set("User-Agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile Safari/537.36")
-	request.Header.Set("Connection", "keep-alive")
-
-	cookies := (*ctx).Value("cookies").([]*http.Cookie)
-	for _, cookie := range cookies {
-		request.AddCookie(cookie)
-	}
+func filterNewRecords(records []models.Resident, ctx *context.Context, logger *log.Logger) (newRecords []models.Resident){
+	//var newRecords []models.Resident
+	//for _, v := range records {
+	//	rdb := (*ctx).Value("rdb").(*redis.Client)
+	//	boolCmd := rdb.HExists(*ctx,"resident",strconv.Itoa(int(v.ID)))
+	//	if b,err := boolCmd.Result(); err != nil && !b { // maybe first record is not parsed
+	//		logger.Println("Added new record with id = " + strconv.Itoa(int(v.ID)))
+	//		newRecords = append(newRecords, v)
+	//	}
+	//}
+	return
 }
+

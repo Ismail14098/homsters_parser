@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/Ismail14098/homsters_parser/database"
 	"github.com/Ismail14098/homsters_parser/parser"
-	"github.com/Ismail14098/homsters_parser/redis"
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
@@ -33,29 +32,13 @@ func main(){
 	db := database.Initialize(logger)
 	ctx = context.WithValue(ctx, "db", db)
 
-	// create connection to redis
-	rdb := redis.Initialize()
-	ctx = context.WithValue(ctx, "rdb", rdb)
-
 	client := &http.Client{
 		//Timeout: 2 * time.Second,
 	}
 
 	// Retrieve cookies from host
-	request, err := http.NewRequest("GET","https://homsters.kz", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//ctx = common.GetHeadersAndCookies(client,ctx, logger)
 
-	response, err := client.Do(request)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer response.Body.Close()
-
-	cookies := response.Cookies()
-	ctx = context.WithValue(ctx, "cookies", cookies)
-
-	parser.Parse(client, &ctx, logger)
+	parser.Parse(client, ctx, logger)
 }
 

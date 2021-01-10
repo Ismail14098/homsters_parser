@@ -1,12 +1,9 @@
-package models
+package common
 
-import "gorm.io/gorm"
-
-type Resident struct {
-	gorm.Model
+type ResponseEstateForBounds struct {
+	ID uint
 	Name string
-	DeveloperID uint
-	Developer Developer
+	DeveloperName string
 	CityName string
 	DistrictName string
 	SubDistrictName string

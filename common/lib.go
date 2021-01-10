@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"log"
 	"net/http"
 )
 
@@ -17,4 +18,21 @@ func ModifyRequest(request *http.Request, ctx *context.Context){
 	for _, cookie := range cookies {
 		request.AddCookie(cookie)
 	}
+}
+
+func GetHeadersAndCookies(client *http.Client, ctx context.Context, logger *log.Logger) context.Context{
+	request, err := http.NewRequest("GET","https://homsters.kz", nil)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	cookies := response.Cookies()
+	ctx = context.WithValue(ctx, "cookies", cookies)
+	return ctx
 }
